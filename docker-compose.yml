@@ -1,0 +1,61 @@
+version: '3.7'
+
+networks:
+  hostel-admin-network:
+
+services:
+  hostel_admin_api:
+    build:
+      context: .
+      dockerfile: ./Docker_Local
+    command: npm run start:dev
+    container_name: hostel_admin_api_container
+    volumes:
+      - ./:/home/node
+      - /home/node/node_modules
+    ports:
+      - '8023:8023'
+    depends_on:
+      - hostel_admin_database
+      - hostel_admin_redis
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    networks:
+      - hostel-admin-network
+
+  hostel_admin_database:
+    image: postgres:14.9-alpine
+    restart: always
+    container_name: hostel_admin_database_container
+    volumes:
+      - ./hostel_admin_pg_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=hostel_admin
+    ports:
+      - '5469:5432'
+    networks:
+      - hostel-admin-network
+
+  hostel_admin_redis:
+    image: redis:latest
+    container_name: hostel_admin_redis_container
+    ports:
+      - '6377:6379' 
+    volumes:
+      - ./hostel_admin_redis_data:/data
+    networks:
+      - hostel-admin-network
+
+volumes:
+  hostel_admin_redis_data:
+    driver: local
+  hostel_admin_pg_data:
+    driver: local
