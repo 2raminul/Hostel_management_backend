@@ -5,7 +5,6 @@ import { Logger, RequestMethod, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ResponseTransformInterceptor } from './common/interceptor/global-response-interceptor';
-import { RolePermissionsSeederService } from './modules/v1/user/seed/role-permissions.seeder.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -28,10 +27,6 @@ async function bootstrap() {
 
   const reflector = app.get(Reflector);
   app.useGlobalInterceptors(new ResponseTransformInterceptor(reflector));
-
-  const rolePermissionsService = app.get(RolePermissionsSeederService);
-
-  await Promise.all([rolePermissionsService.insertRolePermissions()]);
 
   const config = new DocumentBuilder()
     .setTitle('Hostel admin backend api')

@@ -3,8 +3,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { configValidationSchema } from './common/schema/config-schema';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { getDatabaseConfig } from 'db/data-source';
 import { APP_FILTER } from '@nestjs/core';
 import { AllExceptionsFilter } from './common/exception/exception-filter';
 import { HttpModule } from '@nestjs/axios';
@@ -23,6 +21,8 @@ import { OnlineCardsInfoController } from './modules/v1/settings/online-cards-in
 import { OnlineCardsInfoService } from './modules/v1/settings/online-cards-info/online-cards-info.service';
 import { ExpenseCategoriesModule } from './modules/v1/expenses/expense-categories/expense-categories.module';
 import { ExpenseManagementModule } from './modules/v1/expenses/expense-management/expense-management.module';
+import { KnexModule } from 'nestjs-knex';
+import { getConnectionConfig } from './config/db/db.connection';
 
 @Module({
   imports: [
@@ -33,12 +33,11 @@ import { ExpenseManagementModule } from './modules/v1/expenses/expense-managemen
         abortEarly: false,
       },
     }),
-    TypeOrmModule.forRootAsync({
-      name: 'default',
+    KnexModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) =>
-        getDatabaseConfig(configService),
+        getConnectionConfig(configService),
     }),
     CacheModule.registerAsync({
       imports: [ConfigModule],

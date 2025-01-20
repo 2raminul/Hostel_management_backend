@@ -3,6 +3,8 @@ export type RequestUser = {
   iat: number;
   exp: number;
   refreshToken: string;
+  name: string;
+  email: string;
 };
 
 export type OtpUser = {

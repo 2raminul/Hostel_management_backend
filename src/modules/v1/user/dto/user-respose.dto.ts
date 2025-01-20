@@ -9,21 +9,9 @@ export class UserResponseDto {
 
   @ApiProperty()
   @Expose()
-  firstName: string;
-
-  @ApiProperty()
-  @Expose()
-  lastName: string;
+  name: string;
 
   @ApiProperty()
   @Expose()
   email: string;
-
-  @ApiProperty()
-  @Expose()
-  phone: string;
-
-  @ApiProperty()
-  @Expose()
-  isActive: boolean;
 }

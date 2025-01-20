@@ -1,115 +1,105 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
-import * as ms from 'ms';
-import { RequestUser } from './type/request-user';
-import { UserService } from '../user/user.service';
-import { User } from '../user/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
-import { AuthTokenService } from './auth-token.service';
-
+import * as bcrypt from 'bcrypt';
+import { InjectConnection, Knex } from 'nestjs-knex';
+import { Cache } from 'cache-manager';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { RequestUser } from './type/request-user';
 @Injectable()
 export class AuthService {
   constructor(
-    private userService: UserService,
+    @InjectConnection()
+    private readonly hmDb: Knex,
     private jwtService: JwtService,
     private readonly configService: ConfigService,
-    private readonly authTokenService: AuthTokenService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
-  private accessTokenExpireIn = '24h';
-
   async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
+    const user = await this.hmDb('users')
+      .where({
+        email: loginDto.email,
+        is_active: true,
+        deleted_at: null,
+      })
+      .select('id', 'name', 'email', 'password')
+      .first();
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    const isPasswordValid = await this.validatePassword(
+      loginDto.password,
+      user.password,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException();
+    }
+    /**
+     * We need to add role and role related accesses in the payload once the roles guard is ready
+     */
     const payload = {
-      userId: user.id,
+      iat: new Date().getTime(),
+      userId: (user as any).id,
+      name: user.name,
+      email: user.email,
     };
-    //console.log('user: ', user);
 
     return {
-      access_token: this.getAccessToken(payload),
-      refresh_token: this.getRefreshToken(payload),
-      user: user,
-      expires_at: this.getTokenExpireAt(),
+      accessToken: this.generateAccessToken(payload),
+      refreshToken: this.generateRefreshToken(payload),
+      user: {
+        name: user.name,
+        email: user.email,
+      },
     };
   }
 
-  async refreshTokens(user: RequestUser): Promise<any> {
-    const userInfo = await this.userService.findOne(user.userId);
-    if (!userInfo) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-    delete userInfo.password;
+  async validatePassword(plainTextPass: string, hashedPass: string) {
+    return await bcrypt.compare(plainTextPass, hashedPass);
+  }
+
+  async refreshTokens(user: RequestUser) {
     const payload = {
-      userId: user.userId,
+      iat: new Date().getTime(),
+      userId: (user as any).id,
+      name: user.name,
+      email: user.email,
     };
-
-    const accessToken = this.getAccessToken(payload, this.accessTokenExpireIn);
-    const refreshToken = this.getRefreshToken(payload);
-
-    await this.authTokenService.saveTokens(accessToken, refreshToken, userInfo);
-
+    console.log('user:', payload);
     return {
-      access_token: accessToken,
-      refresh_token: refreshToken,
-      user: userInfo,
+      accessToken: this.generateAccessToken(payload),
+      refreshToken: this.generateRefreshToken(payload),
+      user: {
+        name: user.name,
+        email: user.email,
+      },
     };
   }
 
-  private async validateUser(email: string, password: string): Promise<User> {
-    const user = await this.userService.findByEmail(email);
-    if (!(await user?.validatePassword(password))) {
-      throw new UnauthorizedException('Invalid email or password !');
-    }
-    delete user.password;
-    return user;
-  }
+  async findById(id: number) {}
 
-  async findById(id: number): Promise<User> {
-    const user = await this.userService.findOne(id);
-    delete user.password;
-    return user;
-  }
+  async validateToken(token: string) {}
 
-  async validateToken(token: string): Promise<any> {
-    try {
-      // need to work on this to validate signature and token
-      const actualToken = token.replace('Bearer', '').trim();
-      const decodedToken = await this.jwtService.decode(actualToken);
-      return decodedToken;
-
-      // const payload = await this.jwtService.verify(actualToken, {
-      //   secret: this.configService.get<string>('JWT_TOKEN_SECRET'),
-      // });
-
-      // if (payload) {
-      //   throw new UnauthorizedException();
-      // }
-
-      // return payload;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid token');
-    }
-  }
-
-  getAccessToken(payload: any, tokenExpireAt?: string) {
-    const expiresIn = tokenExpireAt ? tokenExpireAt : '10h';
-
+  generateAccessToken(payload: any) {
     return this.jwtService.sign(payload, {
-      expiresIn: expiresIn,
-      secret: this.configService.get<string>('JWT_TOKEN_SECRET'),
+      secret: this.configService.get('ACCESS_TOKEN_SECRET'),
+      expiresIn: this.configService.get('ACCESS_TOKEN_EXPIRE_TIME'),
     });
   }
 
-  getRefreshToken(payload: any) {
-    return this.jwtService.sign(payload, {
-      expiresIn: '30d',
-      secret: this.configService.get<string>('JWT_TOKEN_SECRET'),
+  generateRefreshToken(payload: any) {
+    const refreshToken = this.jwtService.sign(payload, {
+      secret: this.configService.get('REFRESH_TOKEN_SECRET'),
+      expiresIn: this.configService.get('REFRESH_TOKEN_EXPIRE_TIME'),
     });
-  }
-
-  getTokenExpireAt(): number {
-    const expireAt = Date.now() + ms('3m');
-    return expireAt;
+    // Intentionally skipping await.
+    this.cacheManager.set(
+      payload.userId,
+      refreshToken,
+      this.configService.get('REFRESH_TOKEN_EXPIRE_TIME'),
+    );
+    return refreshToken;
   }
 }

@@ -6,19 +6,15 @@ import { UserResponseDto } from '../../user/dto/user-respose.dto';
 export class LoginResponseDto {
   @Expose()
   @ApiProperty()
-  access_token: string;
+  accessToken: string;
 
   @Expose()
   @ApiProperty()
-  refresh_token: string;
+  refreshToken: string;
 
   @Expose()
   @ApiProperty({
     type: () => UserResponseDto,
   })
   user: UserResponseDto;
-
-  @Expose()
-  @ApiProperty()
-  expires_at: number;
 }

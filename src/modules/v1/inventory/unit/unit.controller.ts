@@ -6,12 +6,15 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { UnitService } from './unit.service';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { AuthenticatedUserGuard } from '../../auth/guard/authenticated.user.guard';
 
+@UseGuards(AuthenticatedUserGuard)
 @Controller('unit')
 @ApiTags('Unit')
 export class UnitController {
@@ -23,12 +26,12 @@ export class UnitController {
   }
 
   @Get()
-  async findAll(){
+  async findAll() {
     return await this.unitService.findAll();
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string){
+  async findOne(@Param('id') id: string) {
     return await this.unitService.findOne(+id);
   }
 
@@ -40,7 +43,7 @@ export class UnitController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string){
+  async remove(@Param('id') id: string) {
     return await this.unitService.remove(+id);
   }
 }

@@ -7,10 +7,9 @@ import { LoginResponseDto } from './dto/login.response';
 import { JwtRefreshAuthGuard } from './guard/jwt-refresh-auth.guard';
 import { RequestUser } from './type/request-user';
 
-import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { ResponseType } from '@/common/decorator/response-type.decorator';
 import { Permissions } from '@/common/decorator/permission.decorator';
-import { PermissionsGuard } from './guard/permission.guard';
+import { CurrentUser } from '../../../common/decorator/loggedin-user.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -32,14 +31,11 @@ export class AuthController {
   @Post('/refresh')
   @ApiBearerAuth()
   @UseGuards(JwtRefreshAuthGuard)
-  refresh(@Req() req: Request) {
-    const userToken = req.user as RequestUser;
-
-    return this.authService.refreshTokens(userToken);
+  refresh(@CurrentUser() user: RequestUser) {
+    return this.authService.refreshTokens(user);
   }
 
   @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('MANAGE_ALL_DATA')
   @Get('/test-auth-route')
   findAll(@Req() req: Request) {
