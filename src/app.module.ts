@@ -10,9 +10,6 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { redisStore } from 'cache-manager-redis-yet';
 import { UserModule } from './modules/v1/user/user.module';
 import { AuthModule } from './modules/v1/auth/auth.module';
-import { CategoryModule } from './modules/v1/inventory/category/category.module';
-import { ItemModule } from './modules/v1/inventory/item/item.module';
-import { UnitModule } from './modules/v1/inventory/unit/unit.module';
 import { BookingFlatformsModule } from './modules/v1/settings/booking-flatforms/booking-flatforms.module';
 import { BookingFlatformsController } from './modules/v1/settings/booking-flatforms/booking-flatforms.controller';
 import { BankInfoModule } from './modules/v1/settings/bank-info/bank-info.module';
@@ -23,6 +20,7 @@ import { ExpenseCategoriesModule } from './modules/v1/expenses/expense-categorie
 import { ExpenseManagementModule } from './modules/v1/expenses/expense-management/expense-management.module';
 import { KnexModule } from 'nestjs-knex';
 import { getConnectionConfig } from './config/db/db.connection';
+import { CategoryModule } from './modules/v1/category/category.module';
 
 @Module({
   imports: [
@@ -58,14 +56,12 @@ import { getConnectionConfig } from './config/db/db.connection';
     },
     UserModule,
     AuthModule,
-    CategoryModule,
-    ItemModule,
-    UnitModule,
     BookingFlatformsModule,
     BankInfoModule,
     OnlineCardsInfoModule,
     ExpenseCategoriesModule,
     ExpenseManagementModule,
+    CategoryModule,
   ],
   controllers: [
     AppController,

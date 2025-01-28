@@ -1,10 +1,9 @@
-import { NestFactory, Reflector } from '@nestjs/core';
+import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { Logger, RequestMethod, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { ResponseTransformInterceptor } from './common/interceptor/global-response-interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,11 +21,12 @@ async function bootstrap() {
     new ValidationPipe({
       transform: true,
       whitelist: true,
+      forbidNonWhitelisted: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
     }),
   );
-
-  const reflector = app.get(Reflector);
-  app.useGlobalInterceptors(new ResponseTransformInterceptor(reflector));
 
   const config = new DocumentBuilder()
     .setTitle('Hostel admin backend api')

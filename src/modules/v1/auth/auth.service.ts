@@ -80,25 +80,17 @@ export class AuthService {
 
   async findById(id: number) {}
 
-  async validateToken(token: string) {}
-
   generateAccessToken(payload: any) {
-    return this.jwtService.sign(payload, {
-      secret: this.configService.get('ACCESS_TOKEN_SECRET'),
-      expiresIn: this.configService.get('ACCESS_TOKEN_EXPIRE_TIME'),
-    });
+    return this.jwtService.sign(payload);
   }
 
   generateRefreshToken(payload: any) {
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get('REFRESH_TOKEN_SECRET'),
-      expiresIn: this.configService.get('REFRESH_TOKEN_EXPIRE_TIME'),
-    });
+    const refreshToken = this.jwtService.sign(payload);
     // Intentionally skipping await.
     this.cacheManager.set(
       payload.userId,
       refreshToken,
-      this.configService.get('REFRESH_TOKEN_EXPIRE_TIME'),
+      this.configService.get<number>('REFRESH_TOKEN_EXPIRE_TIME') * 1000,
     );
     return refreshToken;
   }

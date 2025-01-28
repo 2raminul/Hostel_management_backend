@@ -7,7 +7,12 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 import { JwtRefreshTokenStrategy } from './strategy/jwt-refresh-token.strategy';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({})],
+  imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: 'HM_P0RTUG4L',
+    }),
+  ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtRefreshTokenStrategy],
 })

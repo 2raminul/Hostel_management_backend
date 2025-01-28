@@ -44,7 +44,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     }
 
     const responseBody = {
-      status_code: httpStatus,
+      status: httpStatus,
       data: null,
       message: message,
     };

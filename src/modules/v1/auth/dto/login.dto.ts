@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty } from 'class-validator';
+import { ExtrafieldsDto } from './extras.dto';
 
-export class LoginDto {
+export class LoginDto extends ExtrafieldsDto {
   @ApiProperty({
     description: 'The email of the User',
     example: 'ibrahim@gmail.com',
