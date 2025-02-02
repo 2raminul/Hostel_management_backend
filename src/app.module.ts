@@ -16,11 +16,10 @@ import { BankInfoModule } from './modules/v1/settings/bank-info/bank-info.module
 import { OnlineCardsInfoModule } from './modules/v1/settings/online-cards-info/online-cards-info.module';
 import { OnlineCardsInfoController } from './modules/v1/settings/online-cards-info/online-cards-info.controller';
 import { OnlineCardsInfoService } from './modules/v1/settings/online-cards-info/online-cards-info.service';
-import { ExpenseCategoriesModule } from './modules/v1/expenses/expense-categories/expense-categories.module';
-import { ExpenseManagementModule } from './modules/v1/expenses/expense-management/expense-management.module';
 import { KnexModule } from 'nestjs-knex';
 import { getConnectionConfig } from './config/db/db.connection';
 import { CategoryModule } from './modules/v1/category/category.module';
+import { ExpensesModule } from './modules/v1/expenses/expenses.module';
 
 @Module({
   imports: [
@@ -59,9 +58,8 @@ import { CategoryModule } from './modules/v1/category/category.module';
     BookingFlatformsModule,
     BankInfoModule,
     OnlineCardsInfoModule,
-    ExpenseCategoriesModule,
-    ExpenseManagementModule,
     CategoryModule,
+    ExpensesModule,
   ],
   controllers: [
     AppController,
