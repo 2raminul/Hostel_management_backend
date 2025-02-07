@@ -9,6 +9,8 @@ import { InjectConnection, Knex } from 'nestjs-knex';
 import { RequestUser } from '../auth/type/request-user';
 import { ExpenseQueryDto } from './dto/expense.query.dto';
 import { format } from 'date-fns';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { use } from 'passport';
 
 @Injectable()
 export class ExpensesService {
@@ -45,6 +47,40 @@ export class ExpensesService {
       await trx.commit();
     } catch (error) {
       trx.rollback();
+      Logger.error(error);
+      throw new InternalServerErrorException();
+    }
+  }
+
+  async editExpense(expenseDto: UpdateExpenseDto, user: RequestUser) {
+    const expenseRecord = await this.hmDb('expenses')
+      .select(
+        'id',
+        'brand',
+        'category_id',
+        'quantity',
+        'unit_price',
+        'total_price',
+        'expense_date',
+      )
+      .where('id', expenseDto.id)
+      .first();
+
+    if (!expenseRecord) {
+      throw new BadRequestException();
+    }
+    try {
+      // Below update will create a history record through the trigger written within DB.
+      await this.hmDb('expenses').update({
+        brand: expenseDto.brand,
+        remarks: expenseDto.remarks,
+        quantity: expenseDto.quantity,
+        unit_price: expenseDto.unitPrice,
+        total_price: expenseDto.totalPrice,
+        expense_date: expenseDto.expenseDate,
+        updated_by: user.userId,
+      });
+    } catch (error) {
       Logger.error(error);
       throw new InternalServerErrorException();
     }
@@ -154,5 +190,42 @@ export class ExpensesService {
 
   async findBrands() {
     return await this.hmDb('expenses').distinct('brand').pluck('brand');
+  }
+
+  async getExpenseDetail(id: number) {
+    return await this.hmDb('expenses')
+      .select(
+        'id',
+        'category_name as categoryName',
+        'brand',
+        'quantity',
+        'unit_price as unitPrice',
+        'total_price as totalPrice',
+        'expense_date as expenseDate',
+        'remarks',
+      )
+      .where('id', id)
+      .first();
+  }
+
+  async getExpenseHistory(id: number) {
+    const data = await this.hmDb('expenses_history as eh')
+      .select(
+        'eh.id',
+        'eh.category_id as categoryId',
+        'eh.category_name as categoryName',
+        'eh.brand',
+        'eh.quantity',
+        'eh.unit_price as unitPrice',
+        'eh.total_price as totalPrice',
+        'eh.remarks',
+        'eh.expense_date as expenseDate',
+        'eh.updated_at as version',
+        'us.name as updatedBy',
+      )
+      .join('users as us', 'us.id', '=', 'eh.updated_by')
+      .orderBy('eh.id', 'desc')
+      .where('expenses_id', id);
+    return { data: data || [], count: data?.length || 0 };
   }
 }

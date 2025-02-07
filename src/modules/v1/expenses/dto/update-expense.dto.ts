@@ -1,4 +1,27 @@
-import { PartialType } from '@nestjs/swagger';
-import { CreateExpenseDto } from './create-expense.dto';
+import { IsDate, IsNumber, IsString, MaxLength } from 'class-validator';
 
-export class UpdateExpenseDto extends PartialType(CreateExpenseDto) {}
+export class UpdateExpenseDto {
+  @IsNumber()
+  id: number;
+
+  @IsString()
+  brand: string;
+
+  @IsString()
+  @MaxLength(500, {
+    message: 'Remarks text length should not exceed 500 characters',
+  })
+  remarks: string | undefined;
+
+  @IsNumber()
+  quantity: number;
+
+  @IsNumber()
+  unitPrice: number;
+
+  @IsNumber()
+  totalPrice: number;
+
+  @IsDate({ message: 'expenseDate is required' })
+  expenseDate: Date;
+}
