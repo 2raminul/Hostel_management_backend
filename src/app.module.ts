@@ -20,6 +20,7 @@ import { KnexModule } from 'nestjs-knex';
 import { getConnectionConfig } from './config/db/db.connection';
 import { CategoryModule } from './modules/v1/category/category.module';
 import { ExpensesModule } from './modules/v1/expenses/expenses.module';
+import { InventoryModule } from './modules/v1/inventory/inventory.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { ExpensesModule } from './modules/v1/expenses/expenses.module';
     OnlineCardsInfoModule,
     CategoryModule,
     ExpensesModule,
+    InventoryModule,
   ],
   controllers: [
     AppController,

@@ -42,11 +42,6 @@ export class ExpensesController {
     return this.expensesService.getExpenseList(expenseQueryDto);
   }
 
-  @Get('brands')
-  getBrands() {
-    return this.expensesService.findBrands();
-  }
-
   @Get(':id')
   getExpenseDetail(@Param('id') id: string) {
     return this.expensesService.getExpenseDetail(+id);

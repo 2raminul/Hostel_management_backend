@@ -10,7 +10,6 @@ import { RequestUser } from '../auth/type/request-user';
 import { ExpenseQueryDto } from './dto/expense.query.dto';
 import { format } from 'date-fns';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
-import { use } from 'passport';
 
 @Injectable()
 export class ExpensesService {
@@ -94,6 +93,7 @@ export class ExpensesService {
   ) {
     const existingInventoryRecord = await this.hmDb('inventory_items')
       .where('category_id', expenseDto.categoryId)
+      .where('brand', expenseDto.brand)
       .select(
         'id',
         'in_stock_count as inStockCount',
@@ -120,6 +120,7 @@ export class ExpensesService {
         category_id: categoryData.id,
         category_name: categoryData.name,
         in_stock_count: expenseDto.quantity,
+        brand: expenseDto.brand,
         ...(categoryData.reusable && {
           reusable_available_count: expenseDto.quantity,
         }),
@@ -188,9 +189,7 @@ export class ExpensesService {
     }
   }
 
-  async findBrands() {
-    return await this.hmDb('expenses').distinct('brand').pluck('brand');
-  }
+
 
   async getExpenseDetail(id: number) {
     return await this.hmDb('expenses')
