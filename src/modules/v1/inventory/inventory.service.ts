@@ -1,8 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateInventoryDto } from './dto/create-inventory.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { InjectConnection, Knex } from 'nestjs-knex';
 import { InventoryQueryDto } from './dto/inventory.query.dto';
+import { RequestUser } from '../auth/type/request-user';
 
 @Injectable()
 export class InventoryService {
@@ -10,8 +11,58 @@ export class InventoryService {
     @InjectConnection()
     private readonly hmDb: Knex,
   ) {}
-  create(createInventoryDto: CreateInventoryDto) {
-    return 'This action adds a new inventory';
+  async addToInventory(dto: CreateInventoryDto, user: RequestUser) {
+    try {
+      const [categoryRecord, inventoryRecord] = await Promise.all([
+        this.hmDb('categories')
+          .select('id', 'name', 'reusable')
+          .where('id', dto.categoryId)
+          .first(),
+        this.hmDb('inventory_items')
+          .select(
+            'id',
+            'in_stock_count as inStockCount',
+            'reusable_available_count as reusableAvailableCount',
+          )
+          .where({ category_id: dto.categoryId, brand: dto.brand })
+          .first(),
+      ]);
+      if (!categoryRecord) {
+        throw new BadRequestException();
+      }
+      if (!inventoryRecord) {
+        await this.hmDb('inventory_items').insert({
+          category_id: dto.categoryId,
+          category_name: categoryRecord.name,
+          brand: dto.brand,
+          in_stock_count: dto.quantity,
+          ...(categoryRecord.reusable && {
+            reusable_available_count: dto.quantity,
+          }),
+          remarks: dto.remarks,
+          created_by: user.userId,
+          updated_by: user.userId,
+        });
+        return;
+      }
+      const toBeInStockCount = inventoryRecord.inStockCount + dto.quantity;
+      const reusableLatestCount = categoryRecord.reusable
+        ? inventoryRecord.reusableAvailableCount || 0 + dto.quantity
+        : null;
+      await this.hmDb('inventory_items')
+        .update({
+          in_stock_count: toBeInStockCount,
+          ...(categoryRecord.reusable && {
+            reusable_available_count: reusableLatestCount,
+          }),
+          remarks: dto.remarks,
+          updated_by: user.userId,
+        })
+        .where('id', inventoryRecord.id);
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
   }
 
   async getInvenoryList(queryDto: InventoryQueryDto) {

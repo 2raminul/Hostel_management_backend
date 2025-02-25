@@ -7,19 +7,27 @@ import {
   Param,
   Delete,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { InventoryService } from './inventory.service';
 import { CreateInventoryDto } from './dto/create-inventory.dto';
 import { UpdateInventoryDto } from './dto/update-inventory.dto';
 import { InventoryQueryDto } from './dto/inventory.query.dto';
+import { CurrentUser } from '@/common/decorator/loggedin-user.decorator';
+import { RequestUser } from '../auth/type/request-user';
+import { AuthenticatedUserGuard } from '../auth/guard/authenticated.user.guard';
 
+@UseGuards(AuthenticatedUserGuard)
 @Controller('inventory')
 export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Post()
-  create(@Body() createInventoryDto: CreateInventoryDto) {
-    return this.inventoryService.create(createInventoryDto);
+  addToInventory(
+    @Body() createInventoryDto: CreateInventoryDto,
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.inventoryService.addToInventory(createInventoryDto, user);
   }
 
   @Get('items-list')
