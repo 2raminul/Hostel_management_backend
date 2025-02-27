@@ -16,5 +16,9 @@ export class CategoryQueryDto extends PaginationDto {
 
   @IsOptional()
   @IsString()
+  isSaleItem?: string;
+
+  @IsOptional()
+  @IsString()
   unit?: string;
 }

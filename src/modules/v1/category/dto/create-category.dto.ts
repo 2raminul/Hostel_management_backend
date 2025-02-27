@@ -14,6 +14,10 @@ export class CreateCategoryDto {
   isInventoryItem: boolean;
 
   @IsNotEmpty()
+  @IsBoolean()
+  isSaleItem: boolean;
+
+  @IsNotEmpty()
   @IsString()
   unit: string;
 }

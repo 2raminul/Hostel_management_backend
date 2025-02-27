@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
-import { UpdateCategoryDto } from './dto/update-category.dto';
 import { RequestUser } from '../auth/type/request-user';
 import { InjectConnection, Knex } from 'nestjs-knex';
 import { CategoryQueryDto } from './dto/category.query.dto';
@@ -25,6 +24,7 @@ export class CategoryService {
       await this.hmDb('categories').insert({
         name: dto.name,
         is_inventory_item: dto.isInventoryItem,
+        is_sale_item: dto.isSaleItem,
         reusable: dto.reusable,
         unit: dto.unit,
         created_by: user.userId,
@@ -42,7 +42,7 @@ export class CategoryService {
   }
 
   async getCategoryList(categoryQueryDto: CategoryQueryDto) {
-    const { page, perPage, reusable, isInventoryItem, unit, name } =
+    const { page, perPage, reusable, isInventoryItem, isSaleItem, unit, name } =
       categoryQueryDto;
     try {
       const query = this.hmDb('categories')
@@ -50,6 +50,7 @@ export class CategoryService {
           'id',
           'name',
           'reusable',
+          'is_sale_item as isSaleItem',
           'is_inventory_item as isInventoryItem',
           'unit',
         )
@@ -62,6 +63,9 @@ export class CategoryService {
       }
       if (isInventoryItem) {
         query.where('is_inventory_item', isInventoryItem === 'true');
+      }
+      if (isSaleItem) {
+        query.where('is_sale_item', isSaleItem === 'true');
       }
       if (unit) {
         query.where('unit', unit);
@@ -85,13 +89,5 @@ export class CategoryService {
 
   findOne(id: number) {
     return `This action returns a #${id} category`;
-  }
-
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} category`;
   }
 }

@@ -68,21 +68,23 @@ export class InventoryService {
   async getInvenoryList(queryDto: InventoryQueryDto) {
     const { page, perPage, categoryId, brand } = queryDto;
     try {
-      const query = this.hmDb('inventory_items')
+      const query = this.hmDb('inventory_items as ii')
         .select(
-          'id',
-          'category_id as categoryId',
-          'category_name as categoryName',
-          'brand',
-          'in_stock_count as inStockCount',
-          'reusable_available_count as reusableCount',
+          'ii.id',
+          'ii.category_id as categoryId',
+          'categories.name as categoryName',
+          'ii.brand',
+          'ii.in_stock_count as inStockCount',
+          'ii.reusable_available_count as reusableCount',
+          'categories.is_sale_item as isSaleItem',
         )
-        .whereNull('deleted_at');
+        .join('categories', 'categories.id', '=', 'ii.category_id')
+        .whereNull('ii.deleted_at');
       if (categoryId) {
-        query.where('category_id', queryDto.categoryId);
+        query.where('ii.category_id', queryDto.categoryId);
       }
       if (brand) {
-        query.where('brand', queryDto.brand);
+        query.where('ii.brand', queryDto.brand);
       }
       const paginatedQuery = query
         .clone()
@@ -92,7 +94,7 @@ export class InventoryService {
         .clone()
         .clearSelect()
         .clearOrder()
-        .countDistinct({ count: 'inventory_items.id' });
+        .countDistinct({ count: 'ii.id' });
       const [data, count] = await Promise.all([paginatedQuery, countQuery]);
       return { data, count: count[0].count };
     } catch (error) {
