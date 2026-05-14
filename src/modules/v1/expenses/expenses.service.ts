@@ -26,6 +26,9 @@ export class ExpensesService {
     if (!categoryData) {
       throw new BadRequestException();
     }
+    if (expenseDto.settlementAccountId != null) {
+      await this.ensureSettlementAccount(expenseDto.settlementAccountId);
+    }
     const trx = await this.hmDb.transaction();
     try {
       if (categoryData.isInventoryItem) {
@@ -39,6 +42,7 @@ export class ExpensesService {
         unit_price: expenseDto.unitPrice,
         total_price: expenseDto.totalPrice,
         expense_date: expenseDto.expenseDate,
+        settlement_account_id: expenseDto.settlementAccountId ?? null,
         created_by: user.userId,
         updated_by: user.userId,
         ...(expenseDto.remarks && { remarks: expenseDto.remarks }),
@@ -48,6 +52,17 @@ export class ExpensesService {
       trx.rollback();
       Logger.error(error);
       throw new InternalServerErrorException();
+    }
+  }
+
+  private async ensureSettlementAccount(id: number) {
+    const row = await this.hmDb('settlement_accounts')
+      .where({ id })
+      .whereNull('deleted_at')
+      .where('is_active', true)
+      .first();
+    if (!row) {
+      throw new BadRequestException('Invalid or inactive settlement account.');
     }
   }
 
@@ -69,6 +84,9 @@ export class ExpensesService {
       throw new BadRequestException();
     }
     try {
+      if (expenseDto.settlementAccountId != null) {
+        await this.ensureSettlementAccount(expenseDto.settlementAccountId);
+      }
       // Below update will create a history record through the trigger written within DB.
       await this.hmDb('expenses').update({
         brand: expenseDto.brand,
@@ -77,6 +95,9 @@ export class ExpensesService {
         unit_price: expenseDto.unitPrice,
         total_price: expenseDto.totalPrice,
         expense_date: expenseDto.expenseDate,
+        ...(expenseDto.settlementAccountId !== undefined && {
+          settlement_account_id: expenseDto.settlementAccountId ?? null,
+        }),
         updated_by: user.userId,
       });
     } catch (error) {
@@ -130,6 +151,14 @@ export class ExpensesService {
     }
   }
 
+  async getCategoryName(id: number): Promise<string | null> {
+    const row = await this.hmDb('categories')
+      .select('name')
+      .where('id', id)
+      .first();
+    return row ? String((row as { name: string }).name) : null;
+  }
+
   async getExpenseList(queryDto: ExpenseQueryDto) {
     const {
       page,
@@ -140,34 +169,41 @@ export class ExpensesService {
       purchaseDateBefore,
     } = queryDto;
     try {
-      const query = this.hmDb('expenses')
+      const query = this.hmDb('expenses as e')
         .select(
-          'id',
-          'category_id as categoryId',
-          'category_name as categoryName',
-          'brand',
-          'quantity',
-          'unit_price as unitPrice',
-          'total_price as totalPrice',
-          'expense_date as expenseDate',
+          'e.id',
+          'e.category_id as categoryId',
+          'e.category_name as categoryName',
+          'e.brand',
+          'e.quantity',
+          'e.unit_price as unitPrice',
+          'e.total_price as totalPrice',
+          'e.expense_date as expenseDate',
+          'sa.name as settlementAccount',
         )
-        .whereNull('deleted_at');
+        .leftJoin(
+          'settlement_accounts as sa',
+          'sa.id',
+          '=',
+          'e.settlement_account_id',
+        )
+        .whereNull('e.deleted_at');
       if (categoryId) {
-        query.where('category_id', queryDto.categoryId);
+        query.where('e.category_id', queryDto.categoryId);
       }
       if (brand) {
-        query.where('brand', queryDto.brand);
+        query.where('e.brand', queryDto.brand);
       }
       if (purchaseDateAfter) {
         query.where(
-          'expense_date',
+          'e.expense_date',
           '>=',
           format(purchaseDateAfter, 'yyyy-MM-dd HH:mm:ss'),
         );
       }
       if (purchaseDateBefore) {
         query.where(
-          'expense_date',
+          'e.expense_date',
           '<=',
           format(purchaseDateBefore, 'yyyy-MM-dd HH:mm:ss'),
         );
@@ -180,7 +216,7 @@ export class ExpensesService {
         .clone()
         .clearSelect()
         .clearOrder()
-        .countDistinct({ count: 'expenses.id' });
+        .countDistinct({ count: 'e.id' });
       const [data, count] = await Promise.all([paginatedQuery, countQuery]);
       return { data, count: count[0].count };
     } catch (error) {
@@ -189,21 +225,74 @@ export class ExpensesService {
     }
   }
 
+  async getSummary(dateFrom?: string, dateTo?: string, categoryId?: number) {
+    const row = await this.hmDb('expenses as e')
+      .whereNull('e.deleted_at')
+      .modify((qb) => {
+        if (dateFrom) qb.where('e.expense_date', '>=', dateFrom);
+        if (dateTo) qb.where('e.expense_date', '<=', dateTo);
+        if (categoryId) qb.where('e.category_id', categoryId);
+      })
+      .select(
+        this.hmDb.raw('COALESCE(SUM(e.total_price), 0) as totalAmount'),
+        this.hmDb.raw('COUNT(e.id) as entryCount'),
+      )
+      .first();
+    return {
+      totalAmount: Number((row as any)?.totalAmount ?? 0),
+      entryCount: Number((row as any)?.entryCount ?? 0),
+    };
+  }
 
+  /** All matching rows for expense reports / PDF (no pagination). */
+  async getExpenseReportRows(
+    dateFrom?: string,
+    dateTo?: string,
+    categoryId?: number,
+  ) {
+    return this.hmDb('expenses as e')
+      .select(
+        'e.id',
+        'e.category_id as categoryId',
+        'e.category_name as categoryName',
+        'e.brand',
+        'e.quantity',
+        'e.unit_price as unitPrice',
+        'e.total_price as totalPrice',
+        'e.expense_date as expenseDate',
+        'e.remarks',
+      )
+      .whereNull('e.deleted_at')
+      .modify((qb) => {
+        if (dateFrom) qb.where('e.expense_date', '>=', dateFrom);
+        if (dateTo) qb.where('e.expense_date', '<=', dateTo);
+        if (categoryId) qb.where('e.category_id', categoryId);
+      })
+      .orderBy('e.expense_date', 'desc')
+      .orderBy('e.id', 'desc');
+  }
 
   async getExpenseDetail(id: number) {
-    return await this.hmDb('expenses')
+    return await this.hmDb('expenses as e')
       .select(
-        'id',
-        'category_name as categoryName',
-        'brand',
-        'quantity',
-        'unit_price as unitPrice',
-        'total_price as totalPrice',
-        'expense_date as expenseDate',
-        'remarks',
+        'e.id',
+        'e.category_name as categoryName',
+        'e.brand',
+        'e.quantity',
+        'e.unit_price as unitPrice',
+        'e.total_price as totalPrice',
+        'e.expense_date as expenseDate',
+        'e.remarks',
+        'e.settlement_account_id as settlementAccountId',
+        'sa.name as settlementAccountName',
       )
-      .where('id', id)
+      .leftJoin(
+        'settlement_accounts as sa',
+        'sa.id',
+        '=',
+        'e.settlement_account_id',
+      )
+      .where('e.id', id)
       .first();
   }
 

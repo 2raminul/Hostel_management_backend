@@ -1,11 +1,22 @@
-import { Controller, Get, Post, Body, Patch, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiTags } from '@nestjs/swagger';
+import { AuthenticatedUserGuard } from '../auth/guard/authenticated.user.guard';
 
 @Controller('users')
 @ApiTags('User')
+@UseGuards(AuthenticatedUserGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -29,8 +40,8 @@ export class UserController {
     return this.userService.update(+id, updateUserDto);
   }
 
-  // @Delete(':id')
-  // remove(@Param('id') id: string) {
-  //   return this.userService.remove(+id);
-  // }
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.userService.remove(+id);
+  }
 }

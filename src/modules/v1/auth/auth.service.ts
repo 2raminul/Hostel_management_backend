@@ -7,6 +7,8 @@ import { InjectConnection, Knex } from 'nestjs-knex';
 import { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { RequestUser } from './type/request-user';
+import { PermissionsService } from '../permissions/permissions.service';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -15,6 +17,7 @@ export class AuthService {
     private jwtService: JwtService,
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   async login(loginDto: LoginDto) {
@@ -36,14 +39,18 @@ export class AuthService {
     if (!isPasswordValid) {
       throw new UnauthorizedException();
     }
-    /**
-     * We need to add role and role related accesses in the payload once the roles guard is ready
-     */
+    const uid = (user as { id: number }).id;
+    const [isAdmin, permissions] = await Promise.all([
+      this.permissionsService.isUserAdmin(uid),
+      this.permissionsService.getEffectivePermissions(uid),
+    ]);
     const payload = {
       iat: new Date().getTime(),
-      userId: (user as any).id,
+      userId: uid,
       name: user.name,
       email: user.email,
+      isAdmin,
+      permissions,
     };
 
     return {
@@ -52,6 +59,8 @@ export class AuthService {
       user: {
         name: user.name,
         email: user.email,
+        isAdmin,
+        permissions,
       },
     };
   }
@@ -61,19 +70,27 @@ export class AuthService {
   }
 
   async refreshTokens(user: RequestUser) {
+    const uid = user.userId;
+    const [isAdmin, permissions] = await Promise.all([
+      this.permissionsService.isUserAdmin(uid),
+      this.permissionsService.getEffectivePermissions(uid),
+    ]);
     const payload = {
       iat: new Date().getTime(),
-      userId: (user as any).id,
+      userId: uid,
       name: user.name,
       email: user.email,
+      isAdmin,
+      permissions,
     };
-    console.log('user:', payload);
     return {
       accessToken: this.generateAccessToken(payload),
       refreshToken: this.generateRefreshToken(payload),
       user: {
         name: user.name,
         email: user.email,
+        isAdmin,
+        permissions,
       },
     };
   }

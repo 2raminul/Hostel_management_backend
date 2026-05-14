@@ -1,4 +1,4 @@
-import { IsDate, IsNumber, IsString, MaxLength } from 'class-validator';
+import { IsDate, IsInt, IsNumber, IsOptional, IsString, MaxLength, Min } from 'class-validator';
 
 export class UpdateExpenseDto {
   @IsNumber()
@@ -24,4 +24,9 @@ export class UpdateExpenseDto {
 
   @IsDate({ message: 'expenseDate is required' })
   expenseDate: Date;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  settlementAccountId?: number;
 }

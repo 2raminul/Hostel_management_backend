@@ -1,9 +1,11 @@
 import {
   IsDate,
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
 } from 'class-validator';
 
 export class CreateExpenseDto {
@@ -31,4 +33,9 @@ export class CreateExpenseDto {
 
   @IsDate({ message: 'expenseDate is required' })
   expenseDate: Date;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  settlementAccountId?: number;
 }

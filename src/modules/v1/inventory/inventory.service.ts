@@ -6,19 +6,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateInventoryDto } from './dto/create-inventory.dto';
-import { InjectConnection, Knex } from 'nestjs-knex';
+import type * as KnexTypes from 'knex';
+import { InjectConnection, Knex as KnexConn } from 'nestjs-knex';
 import { InventoryQueryDto } from './dto/inventory.query.dto';
 import { RequestUser } from '../auth/type/request-user';
 import { InventoryUsageDto } from './dto/usage-inventory.dto';
 import { InventorySaleDto } from './dto/sale-inventory.dto';
 import { ReusableInventoryUpdateDto } from './dto/reusable-inventory-update.dto';
 import { ReusableItemStateEnum } from './enums/reusable-item-state.enum';
+import { IncomeService } from '../income/income.service';
 
 @Injectable()
 export class InventoryService {
   constructor(
     @InjectConnection()
-    private readonly hmDb: Knex,
+    private readonly hmDb: KnexConn,
+    private readonly incomeService: IncomeService,
   ) {}
   async addToInventory(dto: CreateInventoryDto, user: RequestUser) {
     try {
@@ -56,7 +59,7 @@ export class InventoryService {
       }
       const toBeInStockCount = inventoryRecord.inStockCount + dto.quantity;
       const reusableLatestCount = categoryRecord.reusable
-        ? inventoryRecord.reusableAvailableCount || 0 + dto.quantity
+        ? (inventoryRecord.reusableAvailableCount || 0) + dto.quantity
         : null;
       await this.hmDb('inventory_items')
         .update({
@@ -140,6 +143,7 @@ export class InventoryService {
         throw new BadRequestException('Not enough items in stock');
       }
       const remainingCount = inventoryItemRecord.inStockCount - dto.sellCount;
+      const totalSaleAmount = dto.saleUnitPrice * dto.sellCount;
       const trx = await this.hmDb.transaction();
       try {
         await trx('inventory_items')
@@ -149,10 +153,10 @@ export class InventoryService {
             updated_by: user.userId,
           })
           .where('id', dto.inventoryItemId);
-        this.addIncomeBySale();
+        await this.addIncomeBySale(dto, user, totalSaleAmount, trx);
         await trx.commit();
       } catch (error) {
-        trx.rollback();
+        await trx.rollback();
         Logger.error(error);
         throw new InternalServerErrorException();
       }
@@ -214,8 +218,29 @@ export class InventoryService {
     }
   }
 
-  async addIncomeBySale() {
-    console.log('Not implemented yet');
+  async addIncomeBySale(
+    dto: InventorySaleDto,
+    user: RequestUser,
+    totalAmount: number,
+    trx: KnexTypes.Knex.Transaction,
+  ) {
+    const today = new Date().toISOString().split('T')[0];
+    // Default payment method id=1 (Cash); dto can be extended to carry paymentMethodId/bedId if needed
+    const paymentMethodId = (dto as any).paymentMethodId || 1;
+    const bedId = (dto as any).bedId || null;
+    if (!bedId) {
+      // No bed context — skip income recording for non-bed sales
+      return;
+    }
+    await this.incomeService.addIncomeBySale(
+      bedId,
+      paymentMethodId,
+      totalAmount,
+      today,
+      dto.remarks,
+      user.userId,
+      trx,
+    );
   }
 
   async getInventoryItemDetail(id: number) {

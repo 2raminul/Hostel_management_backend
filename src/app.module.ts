@@ -11,16 +11,18 @@ import { redisStore } from 'cache-manager-redis-yet';
 import { UserModule } from './modules/v1/user/user.module';
 import { AuthModule } from './modules/v1/auth/auth.module';
 import { BookingFlatformsModule } from './modules/v1/settings/booking-flatforms/booking-flatforms.module';
-import { BookingFlatformsController } from './modules/v1/settings/booking-flatforms/booking-flatforms.controller';
 import { BankInfoModule } from './modules/v1/settings/bank-info/bank-info.module';
 import { OnlineCardsInfoModule } from './modules/v1/settings/online-cards-info/online-cards-info.module';
-import { OnlineCardsInfoController } from './modules/v1/settings/online-cards-info/online-cards-info.controller';
-import { OnlineCardsInfoService } from './modules/v1/settings/online-cards-info/online-cards-info.service';
 import { KnexModule } from 'nestjs-knex';
 import { getConnectionConfig } from './config/db/db.connection';
 import { CategoryModule } from './modules/v1/category/category.module';
 import { ExpensesModule } from './modules/v1/expenses/expenses.module';
 import { InventoryModule } from './modules/v1/inventory/inventory.module';
+import { RoomsModule } from './modules/v1/rooms/rooms.module';
+import { IncomeModule } from './modules/v1/income/income.module';
+import { PermissionsModule } from './modules/v1/permissions/permissions.module';
+import { ReportsModule } from './modules/v1/reports/reports.module';
+import { SettlementAccountsModule } from './modules/v1/settlement-accounts/settlement-accounts.module';
 
 @Module({
   imports: [
@@ -62,19 +64,19 @@ import { InventoryModule } from './modules/v1/inventory/inventory.module';
     CategoryModule,
     ExpensesModule,
     InventoryModule,
+    RoomsModule,
+    IncomeModule,
+    PermissionsModule,
+    ReportsModule,
+    SettlementAccountsModule,
   ],
-  controllers: [
-    AppController,
-    BookingFlatformsController,
-    OnlineCardsInfoController,
-  ],
+  controllers: [AppController],
   providers: [
     AppService,
     {
       provide: APP_FILTER,
       useClass: AllExceptionsFilter,
     },
-    OnlineCardsInfoService,
   ],
   exports: [],
 })

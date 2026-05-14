@@ -15,6 +15,7 @@ import { CurrentUser } from '@/common/decorator/loggedin-user.decorator';
 import { RequestUser } from '../auth/type/request-user';
 import { ExpenseQueryDto } from './dto/expense.query.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { ExpenseSummaryQueryDto } from './dto/expense-summary-query.dto';
 
 @UseGuards(AuthenticatedUserGuard)
 @Controller('expense')
@@ -40,6 +41,11 @@ export class ExpensesController {
   @Get('expense-list')
   getExpenseList(@Query() expenseQueryDto: ExpenseQueryDto) {
     return this.expensesService.getExpenseList(expenseQueryDto);
+  }
+
+  @Get('summary')
+  getExpenseSummary(@Query() q: ExpenseSummaryQueryDto) {
+    return this.expensesService.getSummary(q.dateFrom, q.dateTo, q.categoryId);
   }
 
   @Get(':id')
